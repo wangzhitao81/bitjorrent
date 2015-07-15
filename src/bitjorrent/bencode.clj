@@ -9,12 +9,12 @@
   [])
 
 ; could be recursive
-(defn parse-dict
-  "parse elements after d, but before e"
-  [stream]
-  )
+;; (defn parse-dict
+;;   "parse elements after d, but before e"
+;;   [stream]
+;;   {parse-key parse-value})
 
-; not recursive
+;; not recursive
 (defn parse-int
   ([stream]
    (parse-int stream ""))
@@ -24,34 +24,36 @@
       (recur (rest stream) (str acc n))
       [stream acc]))))
 
-; not recursive
+;; not recursive
 (defn parse-bytes
-  ([stream]
-   (parse-bytes stream 0))
-  ([stream length]
-   (let [[s num] (parse-int stream)]
-     (loop [newstream s
-            i (read-string num)
-            acc ""]
-       (if (> i 0)
-         (recur (rest newstream) (dec i) (str acc (first newstream)))
-         [newstream (str acc (first s))])))))
+  [stream]
+  (let [[s num] (parse-int stream)]
+    (loop [newstream (rest s) ;; rest to get rid of colon
+           i (dec (read-string num)) ;; dec to get rid of colon
+           acc ""]
+      (if (> i 0)
+        (recur (rest newstream) (dec i) (str acc (first newstream)))
+        [(rest newstream) (str acc (first newstream))]))))
+
+(defn parse-token
+  [stream]
+  (let [first-char (first stream)]
+    (cond
+;      (= first-char \d) ()
+      (= first-char \i) (let [[newstream num] (parse-int (rest stream))]
+                          (println num)
+                          newstream)
+      (re-matches #"\d" (str first-char)) (let [[newstream bytes] (parse-bytes stream)]
+                                            (println bytes)
+                                            newstream)
+      :else (when (not (empty? stream))
+              (recur (rest stream))))))
 
 (defn parse-tokens
   [stream]
   (println (first stream))
-
-  ;; parse each type in their own funcs
-  ;; each func should return the new stream, and the most updated map/list/nums
-  (cond 
-    (= (first stream) \i) (let [[newstream num] (parse-int (rest stream))]
-                            (println num)
-                            (recur newstream))
-    (re-matches #"\d" (str (first stream))) (let [[s bytes] (parse-bytes stream)]
-                                              (println bytes)
-                                              (recur s))
-    (not (empty? stream)) (recur (rest stream))))
-
+  (when (not (empty? stream))
+    (recur (parse-token stream))))
 
 (defn file-stream
   [uri]
