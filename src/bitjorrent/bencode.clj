@@ -36,24 +36,36 @@
         [(rest newstream) (str acc (first newstream))]))))
 
 (defn parse-token
-  [stream]
+  [stream struct]
   (let [first-char (first stream)]
+    (println first-char)
     (cond
-;      (= first-char \d) ()
-      (= first-char \i) (let [[newstream num] (parse-int (rest stream))]
+      ;; recur
+      (= first-char \d) (let [[newstream key] (parse-token (rest stream) struct)
+                              [newerstream value] (parse-token (rest newstream) struct)]
+                          [newerstream (conj struct {key value})])
+
+      ;; don't recur
+      (= first-char \i) (let [[newstream num] (parse-int (rest stream) struct)]
                           (println num)
-                          newstream)
+                          [newstream num])
+      
+      ;; don't recur
       (re-matches #"\d" (str first-char)) (let [[newstream bytes] (parse-bytes stream)]
                                             (println bytes)
-                                            newstream)
+                                            (println "first in newstream:" (first newstream))
+                                            [newstream bytes])
       :else (when (not (empty? stream))
-              (recur (rest stream))))))
+              (recur (rest stream) struct)))))
 
 (defn parse-tokens
-  [stream]
-  (println (first stream))
-  (when (not (empty? stream))
-    (recur (parse-token stream))))
+  ([stream]
+   (parse-tokens stream ()))
+  ([stream struct]
+   (if (not (empty? stream))
+     (let [[newstream newstruct] (parse-token stream struct)]
+       (recur newstream newstruct))
+     struct)))
 
 (defn file-stream
   [uri]
@@ -68,5 +80,5 @@
 (defn decode
   [path]
   (let [char-stream (map char (file-stream path))]
-    (parse-tokens char-stream)))
+    (println "results: " (parse-tokens char-stream))))
 
